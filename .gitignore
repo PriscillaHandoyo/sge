@@ -1,0 +1,27 @@
+# Environment files (JANGAN pernah commit ini)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Python
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.venv/
+backend/venv/
+*.pyc
+
+# Alembic (migration history ikut commit, tapi bukan cache-nya)
+backend/.pytest_cache/
+
+# Docker
+postgres-data/
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
