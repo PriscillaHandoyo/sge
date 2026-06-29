@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Master Material</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Master Data — Material (P/N)</span>
+      <span class="text-muted font-mono" id="count" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="toolbar">
+        <input type="text" id="search" class="search-input" placeholder="Cari nama material..." oninput="refreshTable()" />
+        <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Material</button>
+      </div>
+
+      <div class="table-wrap" id="table-wrap">
+        <div class="table-empty">Memuat data...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <p class="modal-title" id="modal-title">Tambah Material</p>
+      <form id="material-form">
+        <div class="form-group">
+          <label for="nama_material">Nama Material *</label>
+          <input type="text" id="nama_material" required />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="supplier_id">Supplier *</label>
+            <select id="supplier_id" required>
+              <option value="">Pilih supplier...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="satuan_id">Satuan Terkecil *</label>
+            <select id="satuan_id" required>
+              <option value="">Pilih satuan...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="kategori_id">Kategori *</label>
+          <select id="kategori_id" required>
+            <option value="">Pilih kategori...</option>
+          </select>
+        </div>
+
+        <p id="form-error" class="text-red" style="font-size:13px; margin-bottom:12px; display:none;"></p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('modal-overlay')">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("master-material");
+
+    let allMaterials = [];
+    let allSuppliers = [];
+    let allKategori = [];
+    let allSatuan = [];
+    let editingId = null;
+
+    const TABLE_ID = "material";
+    const COLUMNS = [
+      { key: "nama_material", label: "Nama Material" },
+      { key: "supplier_id", label: "Supplier", getValue: (m) => supplierLabel(m.supplier_id) },
+      { key: "kategori_id", label: "Kategori", getValue: (m) => kategoriLabel(m.kategori_id) },
+      { key: "satuan_id", label: "Satuan", getValue: (m) => satuanLabel(m.satuan_id) },
+    ];
+
+    async function init() {
+      const [materialRes, supplierRes, kategoriRes, satuanRes] = await Promise.all([
+        apiFetch("/materials/"),
+        apiFetch("/suppliers/"),
+        apiFetch("/kategori/"),
+        apiFetch("/satuan/"),
+      ]);
+      if (!materialRes || !supplierRes || !kategoriRes || !satuanRes) return;
+
+      allMaterials = await materialRes.json();
+      allSuppliers = await supplierRes.json();
+      allKategori = await kategoriRes.json();
+      allSatuan = await satuanRes.json();
+
+      window.currentTableAllData = () => allMaterials;
+      window.currentTableColumns = COLUMNS;
+      window.currentTableRefresh = refreshTable;
+
+      populateSupplierSelect();
+      populateKategoriSelect();
+      populateSatuanSelect();
+      refreshTable();
+    }
+
+    function refreshTable() {
+      const searchValue = document.getElementById("search").value;
+      const data = processTableData(TABLE_ID, allMaterials, searchValue, ["nama_material"], COLUMNS);
+      document.getElementById("count").textContent = `${data.length} material`;
+      renderTable(data);
+    }
+
+    function populateSupplierSelect() {
+      const select = document.getElementById("supplier_id");
+      select.innerHTML = `<option value="">Pilih supplier...</option>` +
+        allSuppliers.map(s => `<option value="${s.id}">${s.kode_sup} — ${s.nama_sup}</option>`).join("");
+    }
+
+    function populateKategoriSelect() {
+      const select = document.getElementById("kategori_id");
+      select.innerHTML = `<option value="">Pilih kategori...</option>` +
+        allKategori.map(k => `<option value="${k.id}">${k.nama_kategori}</option>`).join("");
+    }
+
+    function populateSatuanSelect() {
+      const select = document.getElementById("satuan_id");
+      select.innerHTML = `<option value="">Pilih satuan...</option>` +
+        allSatuan.map(s => `<option value="${s.id}">${s.nama_satuan}</option>`).join("");
+    }
+
+    function kategoriLabel(kategoriId) {
+      const kategori = allKategori.find(k => k.id === kategoriId);
+      return kategori ? kategori.nama_kategori : "—";
+    }
+
+    function satuanLabel(satuanId) {
+      const satuan = allSatuan.find(s => s.id === satuanId);
+      return satuan ? satuan.nama_satuan : "—";
+    }
+
+    function renderTable(data) {
+      const wrap = document.getElementById("table-wrap");
+      if (data.length === 0) {
+        wrap.innerHTML = `<div class="table-empty">Belum ada data material</div>`;
+        return;
+      }
+
+      const { pageData, page, totalPages, totalItems } = paginate(TABLE_ID, data);
+      const paginationHtml = paginationControls(TABLE_ID, page, totalPages, totalItems);
+
+      const desktopTable = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              ${sortableHeader(TABLE_ID, COLUMNS[0])}
+              ${sortableHeader(TABLE_ID, COLUMNS[1])}
+              ${sortableHeader(TABLE_ID, COLUMNS[2])}
+              ${sortableHeader(TABLE_ID, COLUMNS[3])}
+              <th class="text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pageData.map(m => `
+              <tr>
+                <td>${m.nama_material}</td>
+                <td class="mono">${supplierLabel(m.supplier_id)}</td>
+                <td><span class="badge badge-amber">${kategoriLabel(m.kategori_id)}</span></td>
+                <td class="mono">${satuanLabel(m.satuan_id)}</td>
+                <td class="text-right">${actionButtons(`openEditModal(${m.id})`, `deleteMaterial(${m.id})`)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+        ${paginationHtml}
+      `;
+
+      const mobileCards = `
+        <div class="mobile-cards">
+          ${pageData.map(m => `
+            <div class="mobile-card">
+              ${mobileCardRow("Material", m.nama_material)}
+              ${mobileCardRow("Supplier", supplierLabel(m.supplier_id), true)}
+              ${mobileCardRow("Kategori", kategoriLabel(m.kategori_id))}
+              ${mobileCardRow("Satuan", satuanLabel(m.satuan_id), true)}
+              ${actionButtonsMobile(`openEditModal(${m.id})`, `deleteMaterial(${m.id})`)}
+            </div>
+          `).join("")}
+        </div>
+        ${paginationHtml}
+      `;
+
+      wrap.innerHTML = desktopTable + mobileCards;
+    }
+
+    function supplierLabel(supplierId) {
+      const supplier = allSuppliers.find(s => s.id === supplierId);
+      return supplier ? supplier.kode_sup : "—";
+    }
+
+    function openCreateModal() {
+      editingId = null;
+      document.getElementById("modal-title").textContent = "Tambah Material";
+      document.getElementById("material-form").reset();
+      hideFormError("form-error");
+      openModal("modal-overlay");
+    }
+
+    function openEditModal(id) {
+      const material = allMaterials.find(m => m.id === id);
+      if (!material) return;
+      editingId = id;
+      document.getElementById("modal-title").textContent = "Edit Material";
+      hideFormError("form-error");
+      document.getElementById("nama_material").value = material.nama_material;
+      document.getElementById("supplier_id").value = material.supplier_id;
+      document.getElementById("satuan_id").value = material.satuan_id;
+      document.getElementById("kategori_id").value = material.kategori_id;
+      openModal("modal-overlay");
+    }
+
+    document.getElementById("material-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        nama_material: document.getElementById("nama_material").value,
+        supplier_id: parseInt(document.getElementById("supplier_id").value, 10),
+        satuan_id: parseInt(document.getElementById("satuan_id").value, 10),
+        kategori_id: parseInt(document.getElementById("kategori_id").value, 10),
+      };
+
+      hideFormError("form-error");
+
+      const isEdit = editingId !== null;
+      const response = await apiFetch(
+        isEdit ? `/materials/${editingId}` : "/materials/",
+        { method: isEdit ? "PUT" : "POST", body: JSON.stringify(payload) }
+      );
+      if (!response) return;
+
+      if (!response.ok) {
+        const data = await response.json();
+        showFormError("form-error", data.detail || "Gagal menyimpan data");
+        return;
+      }
+
+      closeModal("modal-overlay");
+      init();
+    });
+
+    async function deleteMaterial(id) {
+      const material = allMaterials.find(m => m.id === id);
+      if (!confirmDelete("material", material.nama_material)) return;
+      const response = await apiFetch(`/materials/${id}`, { method: "DELETE" });
+      if (!response) return;
+      if (!response.ok) { alert("Gagal menghapus data"); return; }
+      init();
+    }
+
+    init();
+  </script>
+</body>
+</html>

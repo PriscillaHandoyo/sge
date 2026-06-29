@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Evaluation Summary</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Evaluation Summary</span>
+      <span class="text-muted font-mono" style="font-size:11px;" id="welcome-text">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+    </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/nav.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script>
+    renderNav("evaluation-summary");
+    document.textContent = `Login sebagai: ${getUsername()} (${getRole()})`;
+  </script>
+</body>
+</html>

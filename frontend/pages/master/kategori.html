@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Master Kategori</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Master Data — Kategori</span>
+      <span class="text-muted font-mono" id="count" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="toolbar">
+        <input type="text" id="search" class="search-input" placeholder="Cari kategori..." oninput="refreshTable()" />
+        <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Kategori</button>
+      </div>
+
+      <div class="table-wrap" id="table-wrap">
+        <div class="table-empty">Memuat data...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:420px;">
+      <p class="modal-title" id="modal-title">Tambah Kategori</p>
+      <form id="kategori-form">
+        <div class="form-group">
+          <label for="nama_kategori">Nama Kategori *</label>
+          <input type="text" id="nama_kategori" required />
+        </div>
+
+        <p id="form-error" class="text-red" style="font-size:13px; margin-bottom:12px; display:none;"></p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('modal-overlay')">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("master-kategori");
+
+    let allKategori = [];
+    let editingId = null;
+
+    const TABLE_ID = "kategori";
+    const COLUMNS = [
+      { key: "id", label: "No" },
+      { key: "nama_kategori", label: "Nama Kategori" },
+    ];
+
+    async function init() {
+      const response = await apiFetch("/kategori/");
+      if (!response) return;
+      allKategori = await response.json();
+
+      window.currentTableAllData = () => allKategori;
+      window.currentTableColumns = COLUMNS;
+      window.currentTableRefresh = refreshTable;
+
+      refreshTable();
+    }
+
+    function refreshTable() {
+      const searchValue = document.getElementById("search").value;
+      const data = processTableData(TABLE_ID, allKategori, searchValue, ["nama_kategori"], COLUMNS);
+      document.getElementById("count").textContent = `${data.length} kategori`;
+      renderTable(data);
+    }
+
+    function renderTable(data) {
+      const wrap = document.getElementById("table-wrap");
+      if (data.length === 0) {
+        wrap.innerHTML = `<div class="table-empty">Belum ada data kategori</div>`;
+        return;
+      }
+
+      const desktopTable = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              ${sortableHeader(TABLE_ID, COLUMNS[0])}
+              ${sortableHeader(TABLE_ID, COLUMNS[1])}
+              <th class="text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(k => `
+              <tr>
+                <td class="mono">${k.id}</td>
+                <td>${k.nama_kategori}</td>
+                <td class="text-right">${actionButtons(`openEditModal(${k.id})`, `deleteKategori(${k.id})`)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+
+      const mobileCards = `
+        <div class="mobile-cards">
+          ${data.map(k => `
+            <div class="mobile-card">
+              ${mobileCardRow("No", k.id, true)}
+              ${mobileCardRow("Nama Kategori", k.nama_kategori)}
+              ${actionButtonsMobile(`openEditModal(${k.id})`, `deleteKategori(${k.id})`)}
+            </div>
+          `).join("")}
+        </div>
+      `;
+
+      wrap.innerHTML = desktopTable + mobileCards;
+    }
+
+    function openCreateModal() {
+      editingId = null;
+      document.getElementById("modal-title").textContent = "Tambah Kategori";
+      document.getElementById("kategori-form").reset();
+      hideFormError("form-error");
+      openModal("modal-overlay");
+    }
+
+    function openEditModal(id) {
+      const kategori = allKategori.find(k => k.id === id);
+      if (!kategori) return;
+      editingId = id;
+      document.getElementById("modal-title").textContent = "Edit Kategori";
+      hideFormError("form-error");
+      document.getElementById("nama_kategori").value = kategori.nama_kategori;
+      openModal("modal-overlay");
+    }
+
+    document.getElementById("kategori-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = { nama_kategori: document.getElementById("nama_kategori").value };
+
+      hideFormError("form-error");
+
+      const isEdit = editingId !== null;
+      const response = await apiFetch(
+        isEdit ? `/kategori/${editingId}` : "/kategori/",
+        { method: isEdit ? "PUT" : "POST", body: JSON.stringify(payload) }
+      );
+      if (!response) return;
+
+      if (!response.ok) {
+        const data = await response.json();
+        showFormError("form-error", data.detail || "Gagal menyimpan data");
+        return;
+      }
+
+      closeModal("modal-overlay");
+      init();
+    });
+
+    async function deleteKategori(id) {
+      const kategori = allKategori.find(k => k.id === id);
+      if (!confirmDelete("kategori", kategori.nama_kategori)) return;
+      const response = await apiFetch(`/kategori/${id}`, { method: "DELETE" });
+      if (!response) return;
+      if (!response.ok) { alert("Gagal menghapus data — kemungkinan masih dipakai Material"); return; }
+      init();
+    }
+
+    init();
+  </script>
+</body>
+</html>

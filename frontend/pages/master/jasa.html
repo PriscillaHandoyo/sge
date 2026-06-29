@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Master Jasa</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Master Data — Jasa</span>
+      <span class="text-muted font-mono" id="count" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="toolbar">
+        <input type="text" id="search" class="search-input" placeholder="Cari jenis pekerjaan..." oninput="refreshTable()" />
+        <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Jasa</button>
+      </div>
+
+      <div class="table-wrap" id="table-wrap">
+        <div class="table-empty">Memuat data...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:420px;">
+      <p class="modal-title" id="modal-title">Tambah Jasa</p>
+      <form id="jasa-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="jenis_pekerjaan">Jenis Pekerjaan *</label>
+            <input type="text" id="jenis_pekerjaan" required />
+          </div>
+          <div class="form-group">
+            <label for="urutan">Urutan</label>
+            <input type="number" id="urutan" min="1" />
+          </div>
+        </div>
+
+        <p id="form-error" class="text-red" style="font-size:13px; margin-bottom:12px; display:none;"></p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('modal-overlay')">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("master-jasa");
+
+    let allJasa = [];
+    let editingId = null;
+
+    const TABLE_ID = "jasa";
+    const COLUMNS = [
+      { key: "urutan", label: "Urutan" },
+      { key: "jenis_pekerjaan", label: "Jenis Pekerjaan" },
+    ];
+
+    async function init() {
+      const response = await apiFetch("/jasa/");
+      if (!response) return;
+      allJasa = await response.json();
+
+      window.currentTableAllData = () => allJasa;
+      window.currentTableColumns = COLUMNS;
+      window.currentTableRefresh = refreshTable;
+
+      refreshTable();
+    }
+
+    function refreshTable() {
+      const searchValue = document.getElementById("search").value;
+      const data = processTableData(TABLE_ID, allJasa, searchValue, ["jenis_pekerjaan"], COLUMNS);
+      document.getElementById("count").textContent = `${data.length} jasa`;
+      renderTable(data);
+    }
+
+    function renderTable(data) {
+      const wrap = document.getElementById("table-wrap");
+      if (data.length === 0) {
+        wrap.innerHTML = `<div class="table-empty">Belum ada data jasa</div>`;
+        return;
+      }
+
+      const desktopTable = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              ${sortableHeader(TABLE_ID, COLUMNS[0])}
+              ${sortableHeader(TABLE_ID, COLUMNS[1])}
+              <th class="text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(j => `
+              <tr>
+                <td class="mono">${j.urutan ?? "—"}</td>
+                <td>${j.jenis_pekerjaan}</td>
+                <td class="text-right">${actionButtons(`openEditModal(${j.id})`, `deleteJasa(${j.id})`)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+
+      const mobileCards = `
+        <div class="mobile-cards">
+          ${data.map(j => `
+            <div class="mobile-card">
+              ${mobileCardRow("Urutan", j.urutan ?? "—", true)}
+              ${mobileCardRow("Jenis Pekerjaan", j.jenis_pekerjaan)}
+              ${actionButtonsMobile(`openEditModal(${j.id})`, `deleteJasa(${j.id})`)}
+            </div>
+          `).join("")}
+        </div>
+      `;
+
+      wrap.innerHTML = desktopTable + mobileCards;
+    }
+
+    function openCreateModal() {
+      editingId = null;
+      document.getElementById("modal-title").textContent = "Tambah Jasa";
+      document.getElementById("jasa-form").reset();
+      hideFormError("form-error");
+      openModal("modal-overlay");
+    }
+
+    function openEditModal(id) {
+      const jasa = allJasa.find(j => j.id === id);
+      if (!jasa) return;
+      editingId = id;
+      document.getElementById("modal-title").textContent = "Edit Jasa";
+      hideFormError("form-error");
+      document.getElementById("jenis_pekerjaan").value = jasa.jenis_pekerjaan;
+      document.getElementById("urutan").value = jasa.urutan ?? "";
+      openModal("modal-overlay");
+    }
+
+    document.getElementById("jasa-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const urutanVal = document.getElementById("urutan").value;
+      const payload = {
+        jenis_pekerjaan: document.getElementById("jenis_pekerjaan").value,
+        urutan: urutanVal === "" ? null : parseInt(urutanVal, 10),
+      };
+
+      hideFormError("form-error");
+
+      const isEdit = editingId !== null;
+      const response = await apiFetch(
+        isEdit ? `/jasa/${editingId}` : "/jasa/",
+        { method: isEdit ? "PUT" : "POST", body: JSON.stringify(payload) }
+      );
+      if (!response) return;
+
+      if (!response.ok) {
+        const data = await response.json();
+        showFormError("form-error", data.detail || "Gagal menyimpan data");
+        return;
+      }
+
+      closeModal("modal-overlay");
+      init();
+    });
+
+    async function deleteJasa(id) {
+      const jasa = allJasa.find(j => j.id === id);
+      if (!confirmDelete("jasa", jasa.jenis_pekerjaan)) return;
+      const response = await apiFetch(`/jasa/${id}`, { method: "DELETE" });
+      if (!response) return;
+      if (!response.ok) { alert("Gagal menghapus data"); return; }
+      init();
+    }
+
+    init();
+  </script>
+</body>
+</html>

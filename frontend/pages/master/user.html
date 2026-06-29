@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Master User</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Master Data — User</span>
+      <span class="text-muted font-mono" id="count" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="toolbar">
+        <input type="text" id="search" class="search-input" placeholder="Cari username..." oninput="filterTable(this.value)" />
+        <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah User</button>
+      </div>
+
+      <div class="table-wrap" id="table-wrap">
+        <div class="table-empty">Memuat data...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Create (username + password + role) -->
+  <div class="modal-overlay" id="create-modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:420px;">
+      <p class="modal-title">Tambah User</p>
+      <form id="create-form">
+        <div class="form-group">
+          <label for="new_username">Username *</label>
+          <input type="text" id="new_username" required autocomplete="off" />
+          <p class="text-muted" style="font-size:11px; margin-top:2px;">Username tidak bisa diubah setelah dibuat.</p>
+        </div>
+        <div class="form-group">
+          <label for="new_password">Password *</label>
+          <input type="password" id="new_password" required minlength="6" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label for="new_role">Role *</label>
+          <select id="new_role" required>
+            <option value="operator">Operator</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+
+        <p id="create-error" class="text-red" style="font-size:13px; margin-bottom:12px; display:none;"></p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('create-modal-overlay')">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Edit (cuma role, username permanen) -->
+  <div class="modal-overlay" id="edit-modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:380px;">
+      <p class="modal-title">Ubah Role User</p>
+      <form id="edit-form">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="edit_username" disabled style="opacity:0.5;" />
+        </div>
+        <div class="form-group">
+          <label for="edit_role">Role *</label>
+          <select id="edit_role" required>
+            <option value="operator">Operator</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+
+        <p id="edit-error" class="text-red" style="font-size:13px; margin-bottom:12px; display:none;"></p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('edit-modal-overlay')">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("master-user");
+
+    let allUsers = [];
+    let editingId = null;
+
+    async function init() {
+      const response = await apiFetch("/users/");
+      if (!response) return;
+      allUsers = await response.json();
+      document.getElementById("count").textContent = `${allUsers.length} user`;
+      renderTable(allUsers);
+    }
+
+    function filterTable(val) {
+      const v = val.toLowerCase();
+      const filtered = allUsers.filter(u => u.username.toLowerCase().includes(v));
+      document.getElementById("count").textContent = `${filtered.length} user`;
+      renderTable(filtered);
+    }
+
+    function renderTable(data) {
+      const wrap = document.getElementById("table-wrap");
+      if (data.length === 0) {
+        wrap.innerHTML = `<div class="table-empty">Belum ada data user</div>`;
+        return;
+      }
+
+      const roleBadge = (role) => {
+        const cls = role === "admin" ? "badge-red" : role === "supervisor" ? "badge-amber" : "badge-green";
+        return `<span class="badge ${cls}">${role}</span>`;
+      };
+
+      const desktopTable = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Role</th>
+              <th class="text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(u => `
+              <tr>
+                <td class="mono">${u.username}</td>
+                <td>${roleBadge(u.role)}</td>
+                <td class="text-right">${actionButtons(`openEditModal(${u.id})`, `deleteUser(${u.id})`)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+
+      const mobileCards = `
+        <div class="mobile-cards">
+          ${data.map(u => `
+            <div class="mobile-card">
+              ${mobileCardRow("Username", u.username, true)}
+              ${mobileCardRow("Role", u.role)}
+              ${actionButtonsMobile(`openEditModal(${u.id})`, `deleteUser(${u.id})`)}
+            </div>
+          `).join("")}
+        </div>
+      `;
+
+      wrap.innerHTML = desktopTable + mobileCards;
+    }
+
+    /* ---------------- Create ---------------- */
+
+    function openCreateModal() {
+      document.getElementById("create-form").reset();
+      hideFormError("create-error");
+      openModal("create-modal-overlay");
+    }
+
+    document.getElementById("create-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        username: document.getElementById("new_username").value,
+        password: document.getElementById("new_password").value,
+        role: document.getElementById("new_role").value,
+      };
+
+      hideFormError("create-error");
+
+      const response = await apiFetch("/users/", { method: "POST", body: JSON.stringify(payload) });
+      if (!response) return;
+
+      if (!response.ok) {
+        const data = await response.json();
+        showFormError("create-error", data.detail || "Gagal membuat user");
+        return;
+      }
+
+      closeModal("create-modal-overlay");
+      init();
+    });
+
+    /* ---------------- Edit role ---------------- */
+
+    function openEditModal(id) {
+      const user = allUsers.find(u => u.id === id);
+      if (!user) return;
+
+      editingId = id;
+      document.getElementById("edit_username").value = user.username;
+      document.getElementById("edit_role").value = user.role;
+      hideFormError("edit-error");
+      openModal("edit-modal-overlay");
+    }
+
+    document.getElementById("edit-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const role = document.getElementById("edit_role").value;
+      hideFormError("edit-error");
+
+      // Backend nerima role lewat query param, bukan body — lihat router users.py
+      const response = await apiFetch(`/users/${editingId}/role?role=${role}`, { method: "PUT" });
+      if (!response) return;
+
+      if (!response.ok) {
+        const data = await response.json();
+        showFormError("edit-error", data.detail || "Gagal mengubah role");
+        return;
+      }
+
+      closeModal("edit-modal-overlay");
+      init();
+    });
+
+    /* ---------------- Delete ---------------- */
+
+    async function deleteUser(id) {
+      const user = allUsers.find(u => u.id === id);
+      if (!confirmDelete("user", user.username)) return;
+
+      const response = await apiFetch(`/users/${id}`, { method: "DELETE" });
+      if (!response) return;
+      if (!response.ok) { alert("Gagal menghapus user"); return; }
+      init();
+    }
+
+    init();
+  </script>
+</body>
+</html>

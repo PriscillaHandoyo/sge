@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Master Supplier</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Master Data — Supplier</span>
+      <span class="text-muted font-mono" id="count" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="toolbar">
+        <input type="text" id="search" class="search-input" placeholder="Cari kode atau nama supplier..." oninput="refreshTable()" />
+        <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Supplier</button>
+      </div>
+
+      <div class="table-wrap" id="table-wrap">
+        <div class="table-empty">Memuat data...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <p class="modal-title" id="modal-title">Tambah Supplier</p>
+      <form id="supplier-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="kode_sup">Kode Supplier *</label>
+            <input type="text" id="kode_sup" required />
+          </div>
+          <div class="form-group">
+            <label for="nama_sup">Nama Supplier *</label>
+            <input type="text" id="nama_sup" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="tipe">Tipe *</label>
+          <select id="tipe" required style="max-width:240px;">
+            <option value="import">Import</option>
+            <option value="lokal">Lokal</option>
+          </select>
+        </div>
+
+        <p class="text-muted" style="font-size:13px; margin-top:-4px; margin-bottom:16px;">
+          Kategori supplier ini otomatis dihitung dari kategori Material yang dimiliki —
+          tambahin/edit Material di supplier ini buat ngubah kategorinya.
+        </p>
+
+        <div class="form-group">
+          <label for="direktur">Direktur</label>
+          <input type="text" id="direktur" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="contact_person_1">Contact Person 1</label>
+            <input type="text" id="contact_person_1" />
+          </div>
+          <div class="form-group">
+            <label for="contact_person_2">Contact Person 2</label>
+            <input type="text" id="contact_person_2" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="alamat">Alamat</label>
+          <textarea id="alamat" rows="2"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="no_telp_1">No. Telp 1</label>
+            <input type="text" id="no_telp_1" />
+          </div>
+          <div class="form-group">
+            <label for="no_telp_2">No. Telp 2</label>
+            <input type="text" id="no_telp_2" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="no_hp_1">No. HP 1</label>
+            <input type="text" id="no_hp_1" />
+          </div>
+          <div class="form-group">
+            <label for="no_hp_2">No. HP 2</label>
+            <input type="text" id="no_hp_2" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="lead_time_delivery">Lead Time Delivery (hari)</label>
+            <input type="number" id="lead_time_delivery" min="0" />
+          </div>
+          <div class="form-group">
+            <label for="lead_time_produksi">Lead Time Produksi (hari)</label>
+            <input type="number" id="lead_time_produksi" min="0" />
+          </div>
+        </div>
+
+        <p id="form-error" class="text-red" style="font-size:13px; margin-bottom:12px; display:none;"></p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('modal-overlay')">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("master-supplier");
+
+    let allSuppliers = [];
+    let editingId = null;
+
+    const TEXT_FIELDS = [
+      "kode_sup", "nama_sup", "direktur",
+      "contact_person_1", "contact_person_2", "alamat", "no_telp_1", "no_telp_2",
+      "no_hp_1", "no_hp_2",
+    ];
+    const SELECT_FIELDS = ["tipe"];
+    const NUMBER_FIELDS = ["lead_time_delivery", "lead_time_produksi"];
+
+    const TABLE_ID = "supplier";
+    const COLUMNS = [
+      { key: "kode_sup", label: "Kode" },
+      { key: "nama_sup", label: "Nama Supplier" },
+      { key: "tipe", label: "Tipe" },
+      { key: "kategori", label: "Kategori", getValue: (s) => (s.kategori || []).join(", ") },
+      { key: "total_lead_time", label: "Total Lead Time" },
+    ];
+
+    async function init() {
+      const response = await apiFetch("/suppliers/");
+      if (!response) return;
+      allSuppliers = await response.json();
+
+      window.currentTableAllData = () => allSuppliers;
+      window.currentTableColumns = COLUMNS;
+      window.currentTableRefresh = refreshTable;
+
+      refreshTable();
+    }
+
+    function refreshTable() {
+      const searchValue = document.getElementById("search").value;
+      const data = processTableData(TABLE_ID, allSuppliers, searchValue, ["kode_sup", "nama_sup"], COLUMNS);
+      document.getElementById("count").textContent = `${data.length} supplier`;
+      renderTable(data);
+    }
+
+    function renderTable(data) {
+      const wrap = document.getElementById("table-wrap");
+      if (data.length === 0) {
+        wrap.innerHTML = `<div class="table-empty">Belum ada data supplier</div>`;
+        return;
+      }
+
+      const desktopTable = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              ${sortableHeader(TABLE_ID, COLUMNS[0])}
+              ${sortableHeader(TABLE_ID, COLUMNS[1])}
+              ${sortableHeader(TABLE_ID, COLUMNS[2])}
+              ${sortableHeader(TABLE_ID, COLUMNS[3])}
+              ${sortableHeader(TABLE_ID, COLUMNS[4], true)}
+              <th class="text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(s => `
+              <tr>
+                <td class="mono">${s.kode_sup}</td>
+                <td>${s.nama_sup}</td>
+                <td><span class="badge badge-neutral">${s.tipe}</span></td>
+                <td>${(s.kategori || []).map(k => `<span class="badge badge-amber" style="margin-right:4px;">${k}</span>`).join("") || "—"}</td>
+                <td class="mono text-right">${s.total_lead_time ?? "—"}</td>
+                <td class="text-right">${actionButtons(`openEditModal(${s.id})`, `deleteSupplier(${s.id})`)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+
+      const mobileCards = `
+        <div class="mobile-cards">
+          ${data.map(s => `
+            <div class="mobile-card">
+              ${mobileCardRow("Kode", s.kode_sup, true)}
+              ${mobileCardRow("Nama", s.nama_sup)}
+              ${mobileCardRow("Tipe", s.tipe)}
+              ${mobileCardRow("Kategori", (s.kategori || []).join(", ") || "—")}
+              ${actionButtonsMobile(`openEditModal(${s.id})`, `deleteSupplier(${s.id})`)}
+            </div>
+          `).join("")}
+        </div>
+      `;
+
+      wrap.innerHTML = desktopTable + mobileCards;
+    }
+
+    function openCreateModal() {
+      editingId = null;
+      document.getElementById("modal-title").textContent = "Tambah Supplier";
+      document.getElementById("supplier-form").reset();
+      hideFormError("form-error");
+      openModal("modal-overlay");
+    }
+
+    function openEditModal(id) {
+      const supplier = allSuppliers.find(s => s.id === id);
+      if (!supplier) return;
+
+      editingId = id;
+      document.getElementById("modal-title").textContent = "Edit Supplier";
+      hideFormError("form-error");
+
+      [...TEXT_FIELDS, ...SELECT_FIELDS, ...NUMBER_FIELDS].forEach(field => {
+        document.getElementById(field).value = supplier[field] ?? "";
+      });
+
+      openModal("modal-overlay");
+    }
+
+    document.getElementById("supplier-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {};
+      TEXT_FIELDS.forEach(field => {
+        const value = document.getElementById(field).value;
+        payload[field] = value === "" ? null : value;
+      });
+      SELECT_FIELDS.forEach(field => {
+        payload[field] = document.getElementById(field).value;
+      });
+      NUMBER_FIELDS.forEach(field => {
+        const value = document.getElementById(field).value;
+        payload[field] = value === "" ? null : parseInt(value, 10);
+      });
+
+      hideFormError("form-error");
+
+      const isEdit = editingId !== null;
+      const response = await apiFetch(
+        isEdit ? `/suppliers/${editingId}` : "/suppliers/",
+        { method: isEdit ? "PUT" : "POST", body: JSON.stringify(payload) }
+      );
+      if (!response) return;
+
+      if (!response.ok) {
+        const data = await response.json();
+        showFormError("form-error", data.detail || "Gagal menyimpan data");
+        return;
+      }
+
+      closeModal("modal-overlay");
+      init();
+    });
+
+    async function deleteSupplier(id) {
+      const supplier = allSuppliers.find(s => s.id === id);
+      if (!confirmDelete("supplier", supplier.nama_sup)) return;
+
+      const response = await apiFetch(`/suppliers/${id}`, { method: "DELETE" });
+      if (!response) return;
+      if (!response.ok) { alert("Gagal menghapus data"); return; }
+      init();
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Master Kode Barang Customer</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Master Data — Kode Barang Customer</span>
+      <span class="text-muted font-mono" id="count" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="toolbar">
+        <input type="text" id="search" class="search-input" placeholder="Cari kode barang..." oninput="refreshTable()" />
+        <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Kode Barang</button>
+      </div>
+
+      <div class="table-wrap" id="table-wrap">
+        <div class="table-empty">Memuat data...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:460px;">
+      <p class="modal-title" id="modal-title">Tambah Kode Barang</p>
+      <form id="kbc-form">
+        <div class="form-group">
+          <label for="kode_barang">Kode Barang *</label>
+          <input type="text" id="kode_barang" required />
+        </div>
+        <div class="form-group">
+          <label for="customer_id">Customer *</label>
+          <select id="customer_id" required>
+            <option value="">Pilih customer...</option>
+          </select>
+        </div>
+
+        <p id="form-error" class="text-red" style="font-size:13px; margin-bottom:12px; display:none;"></p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('modal-overlay')">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("master-kbc");
+
+    let allItems = [];
+    let allCustomers = [];
+    let editingId = null;
+
+    const TABLE_ID = "kbc";
+    const COLUMNS = [
+      { key: "kode_barang", label: "Kode Barang" },
+      { key: "nama_cust", label: "Customer" },
+    ];
+
+    async function init() {
+      const [itemRes, customerRes] = await Promise.all([
+        apiFetch("/kode-barang-customer/"),
+        apiFetch("/customers/"),
+      ]);
+      if (!itemRes || !customerRes) return;
+
+      allItems = await itemRes.json();
+      allCustomers = await customerRes.json();
+
+      window.currentTableAllData = () => allItems;
+      window.currentTableColumns = COLUMNS;
+      window.currentTableRefresh = refreshTable;
+
+      populateCustomerSelect();
+      refreshTable();
+    }
+
+    function populateCustomerSelect() {
+      const select = document.getElementById("customer_id");
+      select.innerHTML = `<option value="">Pilih customer...</option>` +
+        allCustomers.map(c => `<option value="${c.id}">${c.kode_cust} — ${c.nama_cust}</option>`).join("");
+    }
+
+    function refreshTable() {
+      const searchValue = document.getElementById("search").value;
+      const data = processTableData(TABLE_ID, allItems, searchValue, ["kode_barang"], COLUMNS);
+      document.getElementById("count").textContent = `${data.length} kode barang`;
+      renderTable(data);
+    }
+
+    function renderTable(data) {
+      const wrap = document.getElementById("table-wrap");
+      if (data.length === 0) {
+        wrap.innerHTML = `<div class="table-empty">Belum ada data</div>`;
+        return;
+      }
+
+      const desktopTable = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              ${sortableHeader(TABLE_ID, COLUMNS[0])}
+              ${sortableHeader(TABLE_ID, COLUMNS[1])}
+              <th class="text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(i => `
+              <tr>
+                <td class="mono">${i.kode_barang}</td>
+                <td>${i.nama_cust || "—"}</td>
+                <td class="text-right">${actionButtons(`openEditModal(${i.id})`, `deleteItem(${i.id})`)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+
+      const mobileCards = `
+        <div class="mobile-cards">
+          ${data.map(i => `
+            <div class="mobile-card">
+              ${mobileCardRow("Kode Barang", i.kode_barang, true)}
+              ${mobileCardRow("Customer", i.nama_cust)}
+              ${actionButtonsMobile(`openEditModal(${i.id})`, `deleteItem(${i.id})`)}
+            </div>
+          `).join("")}
+        </div>
+      `;
+
+      wrap.innerHTML = desktopTable + mobileCards;
+    }
+
+    function openCreateModal() {
+      editingId = null;
+      document.getElementById("modal-title").textContent = "Tambah Kode Barang";
+      document.getElementById("kbc-form").reset();
+      hideFormError("form-error");
+      openModal("modal-overlay");
+    }
+
+    function openEditModal(id) {
+      const item = allItems.find(i => i.id === id);
+      if (!item) return;
+      editingId = id;
+      document.getElementById("modal-title").textContent = "Edit Kode Barang";
+      hideFormError("form-error");
+      document.getElementById("kode_barang").value = item.kode_barang;
+      document.getElementById("customer_id").value = item.customer_id;
+      openModal("modal-overlay");
+    }
+
+    document.getElementById("kbc-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        kode_barang: document.getElementById("kode_barang").value,
+        customer_id: parseInt(document.getElementById("customer_id").value, 10),
+      };
+
+      hideFormError("form-error");
+
+      const isEdit = editingId !== null;
+      const response = await apiFetch(
+        isEdit ? `/kode-barang-customer/${editingId}` : "/kode-barang-customer/",
+        { method: isEdit ? "PUT" : "POST", body: JSON.stringify(payload) }
+      );
+      if (!response) return;
+
+      if (!response.ok) {
+        const data = await response.json();
+        showFormError("form-error", data.detail || "Gagal menyimpan data");
+        return;
+      }
+
+      closeModal("modal-overlay");
+      init();
+    });
+
+    async function deleteItem(id) {
+      const item = allItems.find(i => i.id === id);
+      if (!confirmDelete("kode barang", item.kode_barang)) return;
+      const response = await apiFetch(`/kode-barang-customer/${id}`, { method: "DELETE" });
+      if (!response) return;
+      if (!response.ok) { alert("Gagal menghapus data"); return; }
+      init();
+    }
+
+    init();
+  </script>
+</body>
+</html>

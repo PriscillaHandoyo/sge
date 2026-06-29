@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Dashboard</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Dashboard</span>
+      <span class="text-muted font-mono" style="font-size:11px;" id="welcome-text">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="card" style="padding:32px;">
+        <p class="heading" style="margin-bottom:8px;">Selamat datang di SGE</p>
+        <p class="text-muted" style="font-size:14px; line-height:1.6;">
+          Modul Dashboard (card &amp; chart) belum dibangun &mdash; nyusul setelah modul Stock dan Produksi siap.
+          Untuk sekarang, gunakan menu <strong>Master</strong> di sidebar buat kelola data Customer, Supplier,
+          Jasa, Material, Kode Barang Customer, BOM, Barang Jasa, dan User.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/nav.js"></script>
+  <script src="../js/icons.js"></script>
+  <script>
+    renderNav("dashboard");
+    document.getElementById("welcome-text").textContent = `Login sebagai: ${getUsername()} (${getRole()})`;
+  </script>
+</body>
+</html>

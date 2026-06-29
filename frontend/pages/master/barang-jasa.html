@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Master Barang Jasa</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Master Data — List Satuan Jasa</span>
+      <span class="text-muted font-mono" id="count" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="toolbar">
+        <input type="text" id="search" class="search-input" placeholder="Cari kode barang atau jasa..." oninput="refreshTable()" />
+        <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Barang Jasa</button>
+      </div>
+
+      <div class="table-wrap" id="table-wrap">
+        <div class="table-empty">Memuat data...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <p class="modal-title" id="modal-title">Tambah Barang Jasa</p>
+      <form id="barang-jasa-form">
+        <div class="form-group">
+          <label for="kode_barang_customer_id">Kode Barang Customer *</label>
+          <select id="kode_barang_customer_id" required>
+            <option value="">Pilih kode barang...</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="jasa_id">Jasa *</label>
+            <select id="jasa_id" required>
+              <option value="">Pilih jasa...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="urutan">Urutan</label>
+            <input type="number" id="urutan" min="1" max="25" />
+          </div>
+        </div>
+
+        <p id="form-error" class="text-red" style="font-size:13px; margin-bottom:12px; display:none;"></p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('modal-overlay')">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("master-barang-jasa");
+
+    let allItems = [];
+    let allKbc = [];
+    let allJasa = [];
+    let editingId = null;
+
+    const TABLE_ID = "barang-jasa";
+    const COLUMNS = [
+      { key: "kode_barang", label: "Kode Barang" },
+      { key: "jenis_pekerjaan", label: "Jenis Pekerjaan" },
+      { key: "urutan", label: "Urutan" },
+    ];
+
+    async function init() {
+      const [itemRes, kbcRes, jasaRes] = await Promise.all([
+        apiFetch("/barang-jasa/"),
+        apiFetch("/kode-barang-customer/"),
+        apiFetch("/jasa/"),
+      ]);
+      if (!itemRes || !kbcRes || !jasaRes) return;
+
+      allItems = await itemRes.json();
+      allKbc = await kbcRes.json();
+      allJasa = await jasaRes.json();
+
+      window.currentTableAllData = () => allItems;
+      window.currentTableColumns = COLUMNS;
+      window.currentTableRefresh = refreshTable;
+
+      populateSelects();
+      refreshTable();
+    }
+
+    function populateSelects() {
+      document.getElementById("kode_barang_customer_id").innerHTML =
+        `<option value="">Pilih kode barang...</option>` +
+        allKbc.map(k => `<option value="${k.id}">${k.kode_barang} (${k.nama_cust || "—"})</option>`).join("");
+
+      document.getElementById("jasa_id").innerHTML =
+        `<option value="">Pilih jasa...</option>` +
+        allJasa.map(j => `<option value="${j.id}">${j.jenis_pekerjaan}</option>`).join("");
+    }
+
+    function refreshTable() {
+      const searchValue = document.getElementById("search").value;
+      const data = processTableData(TABLE_ID, allItems, searchValue, ["kode_barang", "jenis_pekerjaan"], COLUMNS);
+      document.getElementById("count").textContent = `${data.length} baris`;
+      renderTable(data);
+    }
+
+    function renderTable(data) {
+      const wrap = document.getElementById("table-wrap");
+      if (data.length === 0) {
+        wrap.innerHTML = `<div class="table-empty">Belum ada data</div>`;
+        return;
+      }
+
+      const { pageData, page, totalPages, totalItems } = paginate(TABLE_ID, data);
+      const paginationHtml = paginationControls(TABLE_ID, page, totalPages, totalItems);
+
+      const desktopTable = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              ${sortableHeader(TABLE_ID, COLUMNS[0])}
+              ${sortableHeader(TABLE_ID, COLUMNS[1])}
+              ${sortableHeader(TABLE_ID, COLUMNS[2], true)}
+              <th class="text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pageData.map(i => `
+              <tr>
+                <td class="mono">${i.kode_barang || "—"}</td>
+                <td>${i.jenis_pekerjaan || "—"}</td>
+                <td class="mono text-right">${i.urutan ?? "—"}</td>
+                <td class="text-right">${actionButtons(`openEditModal(${i.id})`, `deleteItem(${i.id})`)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+        ${paginationHtml}
+      `;
+
+      const mobileCards = `
+        <div class="mobile-cards">
+          ${pageData.map(i => `
+            <div class="mobile-card">
+              ${mobileCardRow("Kode Barang", i.kode_barang, true)}
+              ${mobileCardRow("Jasa", i.jenis_pekerjaan)}
+              ${mobileCardRow("Urutan", i.urutan, true)}
+              ${actionButtonsMobile(`openEditModal(${i.id})`, `deleteItem(${i.id})`)}
+            </div>
+          `).join("")}
+        </div>
+        ${paginationHtml}
+      `;
+
+      wrap.innerHTML = desktopTable + mobileCards;
+    }
+
+    function openCreateModal() {
+      editingId = null;
+      document.getElementById("modal-title").textContent = "Tambah Barang Jasa";
+      document.getElementById("barang-jasa-form").reset();
+      hideFormError("form-error");
+      openModal("modal-overlay");
+    }
+
+    function openEditModal(id) {
+      const item = allItems.find(i => i.id === id);
+      if (!item) return;
+      editingId = id;
+      document.getElementById("modal-title").textContent = "Edit Barang Jasa";
+      hideFormError("form-error");
+      document.getElementById("kode_barang_customer_id").value = item.kode_barang_customer_id;
+      document.getElementById("jasa_id").value = item.jasa_id;
+      document.getElementById("urutan").value = item.urutan ?? "";
+      openModal("modal-overlay");
+    }
+
+    document.getElementById("barang-jasa-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const urutanVal = document.getElementById("urutan").value;
+      const payload = {
+        kode_barang_customer_id: parseInt(document.getElementById("kode_barang_customer_id").value, 10),
+        jasa_id: parseInt(document.getElementById("jasa_id").value, 10),
+        urutan: urutanVal === "" ? null : parseInt(urutanVal, 10),
+      };
+
+      hideFormError("form-error");
+
+      const isEdit = editingId !== null;
+      const response = await apiFetch(
+        isEdit ? `/barang-jasa/${editingId}` : "/barang-jasa/",
+        { method: isEdit ? "PUT" : "POST", body: JSON.stringify(payload) }
+      );
+      if (!response) return;
+
+      if (!response.ok) {
+        const data = await response.json();
+        showFormError("form-error", data.detail || "Gagal menyimpan data");
+        return;
+      }
+
+      closeModal("modal-overlay");
+      init();
+    });
+
+    async function deleteItem(id) {
+      if (!confirm("Hapus baris ini? Tindakan ini tidak bisa dibatalkan.")) return;
+      const response = await apiFetch(`/barang-jasa/${id}`, { method: "DELETE" });
+      if (!response) return;
+      if (!response.ok) { alert("Gagal menghapus data"); return; }
+      init();
+    }
+
+    init();
+  </script>
+</body>
+</html>

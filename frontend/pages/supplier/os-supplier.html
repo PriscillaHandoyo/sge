@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — O/S Supplier</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">O/S Supplier</span>
+      <span class="text-muted font-mono" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="card" style="padding:20px 24px;">
+        <p class="text-muted" style="font-size:15px; line-height:1.6;">
+          Halaman ini bakal nampilin status outstanding PO ke supplier &mdash;
+          data-nya gabungan dari modul <strong>Stock</strong> dan <strong>Produksi</strong> yang belum kita bangun
+          (Overdue, Stock Saat Ini, dan Rata-Rata Kebutuhan itu hasil kalkulasi, bukan data mentah).
+          Struktur tabel di bawah baru placeholder, belum konek ke data asli.
+        </p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Supplier</th>
+              <th>Part Number</th>
+              <th class="text-right">O/S Qty</th>
+              <th class="text-right">Overdue</th>
+              <th>Target Barang Masuk</th>
+              <th class="text-right">Stock Saat Ini</th>
+              <th class="text-right">Rata-Rata Kebutuhan</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="table-empty">Data belum tersedia &mdash; menunggu modul Stock &amp; Produksi</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("supplier-os");
+  </script>
+</body>
+</html

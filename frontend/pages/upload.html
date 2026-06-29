@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Import Data</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Import Data</span>
+      <span class="text-muted font-mono" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div style="max-width:680px; width:100%; margin:0 auto; display:flex; flex-direction:column; gap:16px;">
+
+        <div class="card" style="padding:20px 24px;">
+          <p class="text-muted" style="font-size:14px; line-height:1.6;">
+            Sekarang baru mendukung import <strong>Customer</strong> dan <strong>Supplier</strong>.
+            Tipe data dideteksi otomatis dari nama file. Setiap file di-cek dulu (preview) sebelum
+            beneran disimpan — kalau ada kode yang udah ada di database, lo bisa pilih
+            <strong>Update</strong> atau <strong>Skip</strong> per baris.
+          </p>
+        </div>
+
+        <div class="card" style="overflow:hidden;">
+          <div style="padding:20px 24px; border-bottom:1px solid var(--border);">
+            <p class="heading" style="margin-bottom:4px;">Upload File Excel</p>
+            <p class="text-muted" style="font-size:14px;">Pilih satu atau beberapa file sekaligus.</p>
+          </div>
+
+          <div style="padding:20px 24px;">
+            <div id="drop-zone" class="drop-zone"
+              onclick="document.getElementById('file-input').click()"
+              ondragover="onDragOver(event)"
+              ondragleave="onDragLeave(event)"
+              ondrop="onDrop(event)">
+              <div class="drop-zone-icon"></div>
+              <p class="drop-zone-text">Klik atau drag file ke sini</p>
+              <p class="drop-zone-hint">.xls atau .xlsx</p>
+            </div>
+            <input type="file" id="file-input" accept=".xlsx,.xls" multiple style="display:none;" onchange="handleFiles(this.files)" />
+          </div>
+
+          <div id="file-list" style="display:none; padding:0 24px 20px; display:flex; flex-direction:column; gap:8px;"></div>
+
+          <div style="padding:0 24px 24px;">
+            <button id="preview-btn" onclick="previewAll()" class="btn btn-primary" style="display:none; width:100%; padding:13px;">
+              Cek File (Preview)
+            </button>
+          </div>
+        </div>
+
+        <div id="results" style="display:flex; flex-direction:column; gap:14px;"></div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/icons.js"></script>
+  <script src="../js/components.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    renderNav("upload");
+
+    const selectedFiles = {};
+    // previewData["fileName::type"] = { fileName, type, new: [...], duplicates: [...], decisions: {...} }
+    const previewData = {};
+
+    const FILE_TYPES = {
+      customer: { previewEndpoint: "/customers/import/preview", confirmEndpoint: "/customers/import/confirm", label: "Customer", key: "kode_cust" },
+      supplier: { previewEndpoint: "/suppliers/import/preview", confirmEndpoint: "/suppliers/import/confirm", label: "Supplier", key: "kode_sup" },
+      material: { previewEndpoint: "/materials/import/preview", confirmEndpoint: "/materials/import/confirm", label: "Material", key: "nama_material" },
+      pekerjaan: { previewEndpoint: "/kode-barang-customer/import/preview", confirmEndpoint: "/kode-barang-customer/import/confirm", label: "Kode Barang Customer + Barang Jasa", key: "kode_barang" },
+      bom: { previewEndpoint: "/bom/import/preview", confirmEndpoint: "/bom/import/confirm", label: "BOM (Bill of Material)", key: "bom_key" },
+    };
+
+    /**
+     * 1 file Excel kadang punya banyak sheet buat beberapa master sekaligus
+     * (misal nama file "Supplier_dan_Part_nya.xlsx" punya sheet Supplier
+     * DAN sheet Material). Makanya ini balikin ARRAY, bukan 1 tipe doang.
+     */
+    function detectTypes(filename) {
+      const name = filename.toLowerCase();
+      const types = [];
+      if (name.includes("customer") || name.includes("cust")) types.push("customer");
+      if (name.includes("supplier") || name.includes("supl") || name.includes("supp")) types.push("supplier");
+      if (name.includes("part") || name.includes("material")) types.push("material");
+      if (name.includes("pekerjaan") || name.includes("bom")) {
+        types.push("pekerjaan");
+        types.push("bom");
+      }
+      return types;
+    }
+
+    function previewKey(fileName, type) {
+      return `${fileName}::${type}`;
+    }
+
+    function handleFiles(files) {
+      for (const file of files) {
+        selectedFiles[file.name] = file;
+      }
+      renderFileList();
+    }
+
+    function renderFileList() {
+      const list = document.getElementById("file-list");
+      const btn = document.getElementById("preview-btn");
+      const names = Object.keys(selectedFiles);
+
+      if (names.length === 0) {
+        list.style.display = "none";
+        btn.style.display = "none";
+        return;
+      }
+
+      list.style.display = "flex";
+      btn.style.display = "block";
+      list.innerHTML = names.map(name => {
+        const file = selectedFiles[name];
+        const size = (file.size / 1024).toFixed(0) + " KB";
+        const types = detectTypes(name);
+        const badges = types.length === 0
+          ? `<span class="badge badge-red">Tipe tidak dikenali</span>`
+          : types.map(t => `<span class="badge badge-amber">${FILE_TYPES[t].label}</span>`).join(" ");
+        return `
+          <div class="file-chip">
+            <div class="file-chip-icon">${fileIcon()}</div>
+            <div class="file-chip-info">
+              <p class="file-chip-name">${name}</p>
+              <p class="file-chip-meta">${size}</p>
+            </div>
+            <div class="flex gap-1" style="flex-wrap:wrap; justify-content:flex-end;">${badges}</div>
+            <button class="file-chip-remove" onclick="removeFile('${name}')" title="Hapus">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function removeFile(name) {
+      delete selectedFiles[name];
+      Object.keys(previewData).forEach(key => {
+        if (key.startsWith(`${name}::`)) delete previewData[key];
+      });
+      renderFileList();
+    }
+
+    function onDragOver(e) {
+      e.preventDefault();
+      document.getElementById("drop-zone").classList.add("dragging");
+    }
+    function onDragLeave() {
+      document.getElementById("drop-zone").classList.remove("dragging");
+    }
+    function onDrop(e) {
+      e.preventDefault();
+      document.getElementById("drop-zone").classList.remove("dragging");
+      handleFiles(e.dataTransfer.files);
+    }
+
+    /* ---------------- Step 1: Preview ---------------- */
+
+    async function previewAll() {
+      const btn = document.getElementById("preview-btn");
+      const results = document.getElementById("results");
+      const names = Object.keys(selectedFiles);
+
+      btn.disabled = true;
+      btn.textContent = "Mengecek...";
+      results.innerHTML = "";
+
+      for (const name of names) {
+        const file = selectedFiles[name];
+        const types = detectTypes(name);
+
+        if (types.length === 0) {
+          renderErrorCard(name, `Tipe tidak dikenali. Nama file harus mengandung kata "customer", "supplier", "part"/"material", atau "pekerjaan"/"bom".`);
+          continue;
+        }
+
+        for (const type of types) {
+          const info = FILE_TYPES[type];
+          const formData = new FormData();
+          formData.append("file", file);
+
+          try {
+            const response = await apiFetch(info.previewEndpoint, { method: "POST", body: formData });
+            if (!response) continue;
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              renderErrorCard(`${info.label} (${name})`, data.detail || "Gagal membaca file");
+              continue;
+            }
+
+            const key = previewKey(name, type);
+            previewData[key] = { fileName: name, type, ...data, decisions: {} };
+            data.duplicates.forEach(dup => {
+              previewData[key].decisions[dup[info.key]] = "skip"; // default aman: skip
+            });
+
+            renderPreviewCard(key);
+          } catch (err) {
+            renderErrorCard(`${info.label} (${name})`, "Koneksi gagal — cek apakah backend jalan");
+          }
+        }
+      }
+
+      btn.disabled = false;
+      btn.textContent = "Cek File (Preview)";
+    }
+
+    function renderErrorCard(label, message) {
+      const results = document.getElementById("results");
+      const div = document.createElement("div");
+      div.className = "result-item error";
+      div.innerHTML = `
+        <div class="result-icon">${alertCircleIcon()}</div>
+        <div>
+          <p class="result-title">${label}</p>
+          <p class="result-message">${message}</p>
+        </div>
+      `;
+      results.appendChild(div);
+    }
+
+    function renderPreviewCard(key) {
+      const data = previewData[key];
+      const info = FILE_TYPES[data.type];
+      const results = document.getElementById("results");
+
+      const existing = document.getElementById(`preview-card-${cssSafe(key)}`);
+      if (existing) existing.remove();
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.id = `preview-card-${cssSafe(key)}`;
+      card.style.padding = "20px 24px";
+
+      const dupListHtml = data.duplicates.length === 0 ? "" : `
+        <div style="margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+          <p class="import-summary" style="margin-bottom:0;">
+            ${data.duplicates.length} kode sudah ada di database.
+          </p>
+          <div class="flex gap-2">
+            <button class="btn" onclick="setAllDecisions('${key}', 'skip')">Skip Semua</button>
+            <button class="btn" onclick="setAllDecisions('${key}', 'update')">Update Semua</button>
+          </div>
+        </div>
+        <p class="text-faint font-mono" style="font-size:11px; margin-top:8px; cursor:pointer;" onclick="toggleDupDetail('${key}')" id="dup-toggle-${cssSafe(key)}">
+          &#9656; Lihat &amp; atur per kode
+        </p>
+        <div class="dup-list" id="dup-list-${cssSafe(key)}" style="display:none;">
+          ${data.duplicates.map(dup => renderDupRow(key, dup, info.key)).join("")}
+        </div>
+      `;
+
+      const INVALID_LABELS = {
+        invalid_customer: "kode customer tidak ditemukan",
+        invalid_supplier: "kode supplier tidak ditemukan",
+        invalid_kbc: "Kode Barang Customer belum ada",
+        invalid_material: "Material belum ada di master",
+      };
+      const invalidRefHtml = Object.keys(INVALID_LABELS).map(field => {
+        const list = data[field];
+        if (!list || list.length === 0) return "";
+        return `
+          <div class="result-item error" style="margin-top:12px;">
+            <div class="result-icon">${alertCircleIcon()}</div>
+            <div>
+              <p class="result-title">${list.length} baris di-skip — ${INVALID_LABELS[field]}</p>
+              <p class="result-message">${list.join("; ")}</p>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const newJasaHtml = !data.new_jasa || data.new_jasa.length === 0 ? "" : `
+        <div class="result-item notice" style="margin-top:12px;">
+          <div class="result-icon">${checkCircleIcon()}</div>
+          <div>
+            <p class="result-title">${data.new_jasa.length} jenis pekerjaan baru akan dibuat otomatis di Master Jasa</p>
+            <p class="result-message">${data.new_jasa.join(", ")}</p>
+          </div>
+        </div>
+      `;
+
+      card.innerHTML = `
+        <p style="font-weight:600; font-size:16px; margin-bottom:4px;">${info.label} — ${data.fileName}</p>
+        <p class="import-summary">${data.new.length} data baru akan ditambahkan otomatis.</p>
+        ${dupListHtml}
+        ${invalidRefHtml}
+        ${newJasaHtml}
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:flex-end;">
+          <button class="btn btn-primary" onclick="confirmImport('${key}')">Konfirmasi Import</button>
+        </div>
+        <div id="confirm-result-${cssSafe(key)}"></div>
+      `;
+
+      results.appendChild(card);
+    }
+
+    function renderDupRow(key, dup, fieldKey) {
+      const code = dup[fieldKey];
+      const existingLabel = dup.existing.label || dup.existing.nama_cust || dup.existing.nama_sup || code;
+      return `
+        <div class="dup-row" id="dup-row-${cssSafe(key)}-${cssSafe(code)}">
+          <div class="dup-row-info">
+            <p class="dup-row-key">${code}</p>
+            <p class="dup-row-detail">Data lama: ${existingLabel}</p>
+          </div>
+          <div class="dup-choice">
+            <button class="dup-choice-btn skip active" onclick="setDecision('${key}', '${code}', 'skip', this)">Skip</button>
+            <button class="dup-choice-btn update" onclick="setDecision('${key}', '${code}', 'update', this)">Update</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function setDecision(fileName, code, decision, btnEl) {
+      previewData[fileName].decisions[code] = decision;
+      const row = btnEl.closest(".dup-row");
+      row.querySelectorAll(".dup-choice-btn").forEach(b => b.classList.remove("active"));
+      btnEl.classList.add("active");
+    }
+
+    function setAllDecisions(fileName, decision) {
+      const data = previewData[fileName];
+      const info = FILE_TYPES[data.type];
+
+      data.duplicates.forEach(dup => {
+        const code = dup[info.key];
+        data.decisions[code] = decision;
+
+        const row = document.getElementById(`dup-row-${cssSafe(fileName)}-${cssSafe(code)}`);
+        if (!row) return; // safety check aja, harusnya selalu ketemu karena udah di-render di innerHTML
+        row.querySelectorAll(".dup-choice-btn").forEach(b => b.classList.remove("active"));
+        row.querySelector(`.dup-choice-btn.${decision}`).classList.add("active");
+      });
+    }
+
+    function toggleDupDetail(fileName) {
+      const list = document.getElementById(`dup-list-${cssSafe(fileName)}`);
+      const toggle = document.getElementById(`dup-toggle-${cssSafe(fileName)}`);
+      const isOpen = list.style.display !== "none";
+      list.style.display = isOpen ? "none" : "flex";
+      list.style.flexDirection = "column";
+      toggle.innerHTML = isOpen ? "&#9656; Lihat &amp; atur per kode" : "&#9662; Sembunyikan detail per kode";
+    }
+
+    /* ---------------- Step 2: Confirm ---------------- */
+
+    async function confirmImport(key) {
+      const data = previewData[key];
+      const info = FILE_TYPES[data.type];
+
+      const btn = document.querySelector(`#preview-card-${cssSafe(key)} .btn-primary`);
+      if (btn) {
+        if (btn.disabled) return; // cegah double-submit kalau ke-klik 2x
+        btn.disabled = true;
+        btn.textContent = "Menyimpan...";
+      }
+
+      const updates = data.duplicates
+        .filter(dup => data.decisions[dup[info.key]] === "update")
+        .map(dup => dup.incoming);
+
+      const payload = { new: data.new, updates, job_order: data.job_order || [] };
+
+      const response = await apiFetch(info.confirmEndpoint, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (!response) {
+        if (btn) { btn.disabled = false; btn.textContent = "Konfirmasi Import"; }
+        return;
+      }
+
+      const result = await response.json();
+      const resultDiv = document.getElementById(`confirm-result-${cssSafe(key)}`);
+
+      if (!response.ok) {
+        resultDiv.innerHTML = `
+          <div class="result-item error" style="margin-top:12px;">
+            <div class="result-icon">${alertCircleIcon()}</div>
+            <div><p class="result-title">Gagal konfirmasi</p><p class="result-message">${result.detail || ""}</p></div>
+          </div>
+        `;
+        if (btn) { btn.disabled = false; btn.textContent = "Konfirmasi Import"; }
+        return;
+      }
+
+      resultDiv.innerHTML = `
+        <div class="result-item success" style="margin-top:12px;">
+          <div class="result-icon">${checkCircleIcon()}</div>
+          <div>
+            <p class="result-title">Berhasil disimpan</p>
+            <p class="result-message">${result.inserted.length} baru ditambahkan, ${result.updated.length} diupdate.</p>
+          </div>
+        </div>
+      `;
+
+      const fileName = data.fileName;
+      delete previewData[key];
+
+      // Hapus chip file-nya cuma kalau SEMUA tipe buat file ini udah kekonfirmasi
+      const stillPending = Object.keys(previewData).some(k => k.startsWith(`${fileName}::`));
+      if (!stillPending) {
+        delete selectedFiles[fileName];
+        renderFileList();
+      }
+    }
+
+    function cssSafe(str) {
+      return str.replace(/[^a-zA-Z0-9]/g, "_");
+    }
+
+    try {
+      document.querySelector(".drop-zone-icon").innerHTML = uploadCloudIcon();
+    } catch (e) {
+      console.warn("uploadCloudIcon belum tersedia:", e);
+    }
+  </script>
+</body>
+</html>

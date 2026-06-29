@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Master Customer</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Master Data — Customer</span>
+      <span class="text-muted font-mono" id="count" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="toolbar">
+        <input type="text" id="search" class="search-input" placeholder="Cari kode atau nama customer..." oninput="refreshTable()" />
+        <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Customer</button>
+      </div>
+
+      <div class="table-wrap" id="table-wrap">
+        <div class="table-empty">Memuat data...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Create/Edit -->
+  <div class="modal-overlay" id="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <p class="modal-title" id="modal-title">Tambah Customer</p>
+      <form id="customer-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="kode_cust">Kode Customer *</label>
+            <input type="text" id="kode_cust" required />
+          </div>
+          <div class="form-group">
+            <label for="nama_cust">Nama Customer *</label>
+            <input type="text" id="nama_cust" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="contact_person_1">Contact Person 1</label>
+            <input type="text" id="contact_person_1" />
+          </div>
+          <div class="form-group">
+            <label for="contact_person_2">Contact Person 2</label>
+            <input type="text" id="contact_person_2" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="alamat">Alamat</label>
+          <textarea id="alamat" rows="2"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="no_telp_1">No. Telp 1</label>
+            <input type="text" id="no_telp_1" />
+          </div>
+          <div class="form-group">
+            <label for="no_telp_2">No. Telp 2</label>
+            <input type="text" id="no_telp_2" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="no_hp_1">No. HP 1</label>
+            <input type="text" id="no_hp_1" />
+          </div>
+          <div class="form-group">
+            <label for="no_hp_2">No. HP 2</label>
+            <input type="text" id="no_hp_2" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="email_1">Email 1</label>
+            <input type="email" id="email_1" />
+          </div>
+          <div class="form-group">
+            <label for="email_2">Email 2</label>
+            <input type="email" id="email_2" />
+          </div>
+        </div>
+
+        <p id="form-error" class="text-red" style="font-size:13px; margin-bottom:12px; display:none;"></p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('modal-overlay')">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("master-customer");
+
+    let allCustomers = [];
+    let editingId = null; // null = mode create, ada isi = mode edit
+
+    const FIELDS = [
+      "kode_cust", "nama_cust", "contact_person_1", "contact_person_2", "alamat",
+      "no_telp_1", "no_telp_2", "no_hp_1", "no_hp_2", "email_1", "email_2",
+    ];
+
+    const TABLE_ID = "customer";
+    const COLUMNS = [
+      { key: "kode_cust", label: "Kode" },
+      { key: "nama_cust", label: "Nama Customer" },
+      { key: "contact_person_1", label: "Contact Person" },
+      { key: "no_telp_1", label: "No. Telp" },
+      { key: "email_1", label: "Email" },
+    ];
+
+    async function init() {
+      const response = await apiFetch("/customers/");
+      if (!response) return;
+      allCustomers = await response.json();
+
+      window.currentTableAllData = () => allCustomers;
+      window.currentTableColumns = COLUMNS;
+      window.currentTableRefresh = refreshTable;
+
+      refreshTable();
+    }
+
+    function refreshTable() {
+      const searchValue = document.getElementById("search").value;
+      const data = processTableData(TABLE_ID, allCustomers, searchValue, ["kode_cust", "nama_cust"], COLUMNS);
+      document.getElementById("count").textContent = `${data.length} customer`;
+      renderTable(data);
+    }
+
+    function renderTable(data) {
+      const wrap = document.getElementById("table-wrap");
+
+      if (data.length === 0) {
+        wrap.innerHTML = `<div class="table-empty">Belum ada data customer</div>`;
+        return;
+      }
+
+      const desktopTable = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              ${sortableHeader(TABLE_ID, COLUMNS[0])}
+              ${sortableHeader(TABLE_ID, COLUMNS[1])}
+              ${sortableHeader(TABLE_ID, COLUMNS[2])}
+              ${sortableHeader(TABLE_ID, COLUMNS[3])}
+              ${sortableHeader(TABLE_ID, COLUMNS[4])}
+              <th class="text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(c => `
+              <tr>
+                <td class="mono">${c.kode_cust}</td>
+                <td>${truncatedCell(c.nama_cust, 240)}</td>
+                <td>${truncatedCell(c.contact_person_1, 180)}</td>
+                <td class="mono">${truncatedCell(c.no_telp_1, 130)}</td>
+                <td class="mono">${truncatedCell(c.email_1, 160)}</td>
+                <td class="text-right">${actionButtons(`openEditModal(${c.id})`, `deleteCustomer(${c.id})`)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+
+      const mobileCards = `
+        <div class="mobile-cards">
+          ${data.map(c => `
+            <div class="mobile-card">
+              ${mobileCardRow("Kode", c.kode_cust, true)}
+              ${mobileCardRow("Nama", c.nama_cust)}
+              ${mobileCardRow("Contact", c.contact_person_1)}
+              ${mobileCardRow("No. HP", c.no_telp_1, true)}
+              ${actionButtonsMobile(`openEditModal(${c.id})`, `deleteCustomer(${c.id})`)}
+            </div>
+          `).join("")}
+        </div>
+      `;
+
+      wrap.innerHTML = desktopTable + mobileCards;
+    }
+
+    /* ---------------- Modal ---------------- */
+
+    function openCreateModal() {
+      editingId = null;
+      document.getElementById("modal-title").textContent = "Tambah Customer";
+      document.getElementById("customer-form").reset();
+      hideFormError("form-error");
+      openModal("modal-overlay");
+    }
+
+    function openEditModal(id) {
+      const customer = allCustomers.find(c => c.id === id);
+      if (!customer) return;
+
+      editingId = id;
+      document.getElementById("modal-title").textContent = "Edit Customer";
+      hideFormError("form-error");
+      FIELDS.forEach(field => {
+        document.getElementById(field).value = customer[field] || "";
+      });
+      openModal("modal-overlay");
+    }
+
+    document.getElementById("customer-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {};
+      FIELDS.forEach(field => {
+        const value = document.getElementById(field).value;
+        payload[field] = value === "" ? null : value;
+      });
+
+      hideFormError("form-error");
+
+      const isEdit = editingId !== null;
+      const response = await apiFetch(
+        isEdit ? `/customers/${editingId}` : "/customers/",
+        {
+          method: isEdit ? "PUT" : "POST",
+          body: JSON.stringify(payload),
+        }
+      );
+      if (!response) return;
+
+      if (!response.ok) {
+        const data = await response.json();
+        showFormError("form-error", data.detail || "Gagal menyimpan data");
+        return;
+      }
+
+      closeModal("modal-overlay");
+      init();
+    });
+
+    /* ---------------- Delete ---------------- */
+
+    async function deleteCustomer(id) {
+      const customer = allCustomers.find(c => c.id === id);
+      if (!confirmDelete("customer", customer.nama_cust)) return;
+
+      const response = await apiFetch(`/customers/${id}`, { method: "DELETE" });
+      if (!response) return;
+
+      if (!response.ok) {
+        alert("Gagal menghapus data");
+        return;
+      }
+      init();
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Master BOM</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Master Data — BOM (Bill of Material)</span>
+      <span class="text-muted font-mono" id="count" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="toolbar">
+        <input type="text" id="search" class="search-input" placeholder="Cari kode barang atau material..." oninput="refreshTable()" />
+        <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah BOM</button>
+      </div>
+
+      <div class="table-wrap" id="table-wrap">
+        <div class="table-empty">Memuat data...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <p class="modal-title" id="modal-title">Tambah BOM</p>
+      <form id="bom-form">
+        <div class="form-group">
+          <label for="kode_barang_customer_id">Kode Barang Customer *</label>
+          <select id="kode_barang_customer_id" required>
+            <option value="">Pilih kode barang...</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="material_id">Material (P/N) *</label>
+            <select id="material_id" required>
+              <option value="">Pilih material...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="penggunaan">Penggunaan *</label>
+            <input type="number" id="penggunaan" step="0.001" min="0" required />
+          </div>
+        </div>
+
+        <p id="form-error" class="text-red" style="font-size:13px; margin-bottom:12px; display:none;"></p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('modal-overlay')">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("master-bom");
+
+    let allBom = [];
+    let allKbc = [];
+    let allMaterials = [];
+    let allSatuan = [];
+    let editingId = null;
+
+    const TABLE_ID = "bom";
+    const COLUMNS = [
+      { key: "kode_barang", label: "Kode Barang" },
+      { key: "nama_material", label: "Material" },
+      { key: "penggunaan", label: "Penggunaan" },
+      { key: "satuan_terkecil", label: "Satuan" },
+    ];
+
+    async function init() {
+      const [bomRes, kbcRes, materialRes, satuanRes] = await Promise.all([
+        apiFetch("/bom/"),
+        apiFetch("/kode-barang-customer/"),
+        apiFetch("/materials/"),
+        apiFetch("/satuan/"),
+      ]);
+      if (!bomRes || !kbcRes || !materialRes || !satuanRes) return;
+
+      allBom = await bomRes.json();
+      allKbc = await kbcRes.json();
+      allMaterials = await materialRes.json();
+      allSatuan = await satuanRes.json();
+
+      window.currentTableAllData = () => allBom;
+      window.currentTableColumns = COLUMNS;
+      window.currentTableRefresh = refreshTable;
+
+      populateSelects();
+      refreshTable();
+    }
+
+    function refreshTable() {
+      const searchValue = document.getElementById("search").value;
+      const data = processTableData(TABLE_ID, allBom, searchValue, ["kode_barang", "nama_material"], COLUMNS);
+      document.getElementById("count").textContent = `${data.length} baris BOM`;
+      renderTable(data);
+    }
+
+    function satuanLabelById(satuanId) {
+      const satuan = allSatuan.find(s => s.id === satuanId);
+      return satuan ? satuan.nama_satuan : "—";
+    }
+
+    function populateSelects() {
+      document.getElementById("kode_barang_customer_id").innerHTML =
+        `<option value="">Pilih kode barang...</option>` +
+        allKbc.map(k => `<option value="${k.id}">${k.kode_barang} (${k.nama_cust || "—"})</option>`).join("");
+
+      document.getElementById("material_id").innerHTML =
+        `<option value="">Pilih material...</option>` +
+        allMaterials.map(m => `<option value="${m.id}">${m.nama_material} — ${satuanLabelById(m.satuan_id)}</option>`).join("");
+    }
+
+    function renderTable(data) {
+      const wrap = document.getElementById("table-wrap");
+      if (data.length === 0) {
+        wrap.innerHTML = `<div class="table-empty">Belum ada data BOM</div>`;
+        return;
+      }
+
+      const { pageData, page, totalPages, totalItems } = paginate(TABLE_ID, data);
+      const paginationHtml = paginationControls(TABLE_ID, page, totalPages, totalItems);
+
+      const desktopTable = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              ${sortableHeader(TABLE_ID, COLUMNS[0])}
+              ${sortableHeader(TABLE_ID, COLUMNS[1])}
+              ${sortableHeader(TABLE_ID, COLUMNS[2], true)}
+              ${sortableHeader(TABLE_ID, COLUMNS[3])}
+              <th class="text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pageData.map(b => `
+              <tr>
+                <td class="mono">${b.kode_barang || "—"}</td>
+                <td>${b.nama_material || "—"}</td>
+                <td class="mono text-right">${b.penggunaan}</td>
+                <td class="mono">${b.satuan_terkecil || "—"}</td>
+                <td class="text-right">${actionButtons(`openEditModal(${b.id})`, `deleteBom(${b.id})`)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+        ${paginationHtml}
+      `;
+
+      const mobileCards = `
+        <div class="mobile-cards">
+          ${pageData.map(b => `
+            <div class="mobile-card">
+              ${mobileCardRow("Kode Barang", b.kode_barang, true)}
+              ${mobileCardRow("Material", b.nama_material)}
+              ${mobileCardRow("Penggunaan", `${b.penggunaan} ${b.satuan_terkecil || ""}`, true)}
+              ${actionButtonsMobile(`openEditModal(${b.id})`, `deleteBom(${b.id})`)}
+            </div>
+          `).join("")}
+        </div>
+        ${paginationHtml}
+      `;
+
+      wrap.innerHTML = desktopTable + mobileCards;
+    }
+
+    function openCreateModal() {
+      editingId = null;
+      document.getElementById("modal-title").textContent = "Tambah BOM";
+      document.getElementById("bom-form").reset();
+      hideFormError("form-error");
+      openModal("modal-overlay");
+    }
+
+    function openEditModal(id) {
+      const bom = allBom.find(b => b.id === id);
+      if (!bom) return;
+      editingId = id;
+      document.getElementById("modal-title").textContent = "Edit BOM";
+      hideFormError("form-error");
+      document.getElementById("kode_barang_customer_id").value = bom.kode_barang_customer_id;
+      document.getElementById("material_id").value = bom.material_id;
+      document.getElementById("penggunaan").value = bom.penggunaan;
+      openModal("modal-overlay");
+    }
+
+    document.getElementById("bom-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        kode_barang_customer_id: parseInt(document.getElementById("kode_barang_customer_id").value, 10),
+        material_id: parseInt(document.getElementById("material_id").value, 10),
+        penggunaan: parseFloat(document.getElementById("penggunaan").value),
+      };
+
+      hideFormError("form-error");
+
+      const isEdit = editingId !== null;
+      const response = await apiFetch(
+        isEdit ? `/bom/${editingId}` : "/bom/",
+        { method: isEdit ? "PUT" : "POST", body: JSON.stringify(payload) }
+      );
+      if (!response) return;
+
+      if (!response.ok) {
+        const data = await response.json();
+        showFormError("form-error", data.detail || "Gagal menyimpan data");
+        return;
+      }
+
+      closeModal("modal-overlay");
+      init();
+    });
+
+    async function deleteBom(id) {
+      if (!confirm("Hapus baris BOM ini? Tindakan ini tidak bisa dibatalkan.")) return;
+      const response = await apiFetch(`/bom/${id}`, { method: "DELETE" });
+      if (!response) return;
+      if (!response.ok) { alert("Gagal menghapus data"); return; }
+      init();
+    }
+
+    init();
+  </script>
+</body>
+</html>

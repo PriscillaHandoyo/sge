@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Material yang Masih Kurang</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Material yang Masih Kurang Berdasarkan Total Kebutuhan</span>
+      <span class="text-muted font-mono" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="card" style="padding:20px 24px;">
+        <p class="text-muted" style="font-size:15px; line-height:1.6;">
+          Halaman ini bakal nampilin material yang kurang berdasarkan total kebutuhan dikurangi stock & PO Supplier
+          yang masih outstanding. Butuh modul Stock dan PO Supplier yang belum kita bangun.
+          Struktur tabel di bawah baru placeholder, belum konek ke data asli.
+        </p>
+      </div>
+
+      <div class="card" style="padding:16px 20px;">
+        <div class="flex items-center gap-3">
+          <span class="label">Buffer Stock</span>
+          <input type="number" id="buffer-stock" value="1" min="0" step="0.5"
+            style="width:90px; font-family:var(--font-mono); font-size:16px; padding:9px 12px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg); color:var(--text); outline:none; text-align:center;" />
+          <span style="font-size:15px; color:var(--text-muted);">Bln</span>
+        </div>
+        <p class="text-faint font-mono" style="font-size:11px; margin-top:10px;">
+          Buffer Stock dipakai buat hitung kolom "Estimasi Kekurangan" &mdash; aktif setelah data Stock &amp; PO Supplier ada.
+        </p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Part Number Material (P/N Sup)</th>
+              <th class="text-right">Perlu di Order Qty</th>
+              <th>Note</th>
+              <th class="text-right">Butuh Bulan</th>
+              <th class="text-right">O/S PO Sup</th>
+              <th class="text-right">Estimasi Kekurangan</th>
+              <th class="text-right">Kebutuhan Per/Bln</th>
+              <th>Jenis Material</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="table-empty">Data belum tersedia &mdash; menunggu modul Stock &amp; PO Supplier</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("stock-material-kurang");
+  </script>
+</body>
+</html>

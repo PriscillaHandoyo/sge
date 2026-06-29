@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGE — Material Dibutuhkan SPK</title>
+  <link rel="stylesheet" href="../../css/style.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-wrapper">
+    <div class="topbar">
+      <span class="topbar-title">Material Dibutuhkan untuk Produksi sesuai SPK</span>
+      <span class="text-muted font-mono" style="font-size:11px;">&mdash;</span>
+    </div>
+
+    <div class="main-content">
+      <div class="card" style="padding:20px 24px;">
+        <p class="text-muted" style="font-size:15px; line-height:1.6;">
+          Halaman ini bakal nampilin kebutuhan material per SPK &mdash; dihitung dari BOM (yang udah ada di Master Data)
+          dikaliin sama qty produksi per SPK, dibandingin sama stock material saat ini.
+          Butuh modul SPK dan Stock yang belum kita bangun. Struktur tabel di bawah baru placeholder.
+        </p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>No SPK</th>
+              <th>Part Number Material</th>
+              <th class="text-right">Kekurangan</th>
+              <th class="text-right">Qty Total Dibutuhkan</th>
+              <th class="text-right">Qty Stock</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="table-empty">Data belum tersedia &mdash; menunggu modul SPK &amp; Stock</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/components.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script>
+    renderNav("produksi-material-spk");
+  </script>
+</body>
+</html>
