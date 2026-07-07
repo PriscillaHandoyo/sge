@@ -57,7 +57,7 @@ function renderNav(activePage) {
   const isProduksiActive = activePage.startsWith("produksi-");
 
   // Master Pages
-  const masterBase = getPagesRootPrefix() + "master/";
+  const masterBase = "/pages/master/";
   const masterItems = [
     { id: "master-customer", href: masterBase + "customer.html", label: "Customer", icon: customerIcon() },
     { id: "master-supplier", href: masterBase + "supplier.html", label: "Supplier", icon: supplierIcon() },
@@ -74,34 +74,34 @@ function renderNav(activePage) {
   }
 
   // Evaluasi Pages
-  const evaluasiBase = getPagesRootPrefix() + "evaluasi/";
+  const evaluasiBase = "/pages/evaluasi/";
   const evaluasiItems = [
     { id: "evaluasi-summary",  href: evaluasiBase + "summary.html", label: "Summary", icon: summaryIcon() },
   ]
 
   // Customer Pages
-  const customerBase = getPagesRootPrefix() + "customer/";
+  const customerBase = "/pages/customer/";
   const customerItems = [
     { id: "customer-summary", href: customerBase + "summary.html", label: "Summary", icon: summaryIcon() },
     { id: "customer-os-po-cust", href: customerBase + "os-po-cust.html", label: "OS PO Customer", icon: osPoCustIcon() },
   ]
 
   // Supplier Pages
-  const supplierBase = getPagesRootPrefix() + "supplier/";
+  const supplierBase = "/pages/supplier/";
   const supplierItems = [
     { id: "supplier-summary", href: supplierBase + "summary.html", label: "Summary", icon: summaryIcon() },
     { id: "supplier-os", href: supplierBase + "os-supplier.html", label: "O/S Supplier", icon: osPoCustIcon() },
   ]
 
   // Stock Pages
-  const stockBase = getPagesRootPrefix() + "stock/";
+  const stockBase = "/pages/stock/";
   const stockItems = [
     { id: "stock-summary", href: stockBase + "summary.html", label: "Summary", icon: summaryIcon() },
     { id: "stock-material-kurang", href: stockBase + "material-kurang.html", label: "Material Kurang", icon: materialKurangIcon() },
   ]
 
   // Produksi Pages
-  const produksiBase = getPagesRootPrefix() + "produksi/";
+  const produksiBase = "/pages/produksi/";
   const produksiItems = [
     { id: "produksi-summary", href: produksiBase + "summary.html", label: "Summary", icon: summaryIcon() },
     { id: "produksi-po-cust-spk", href: produksiBase + "po-cust-ada-spk.html", label: "PO Cust + SPK", icon: osPoCustIcon() },
