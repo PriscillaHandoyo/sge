@@ -1,11 +1,52 @@
 services:
-  app:
-    build: .
-    env_file:
-      - .env.local
-    volumes:
-      - .:/app
+  postgres:
+    image: postgres:16
+    container_name: sge-postgres
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@host.docker.internal:${POSTGRES_PORT}/${POSTGRES_DB}
+      POSTGRES_USER: sge
+      POSTGRES_PASSWORD: sge
+      POSTGRES_DB: sge
+    volumes:
+      - sge-pgdata:/var/lib/postgresql/data
+    networks:
+      sge-net:
+        ipv4_address: 172.21.0.2
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+    container_name: sge-backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    # Port 8888 dihapus karena akses sekarang lewat Caddy
+    environment:
+      - DATABASE_URL=postgresql://sge:sge@postgres:5432/sge
+      - SQLALCHEMY_DATABASE_URI=postgresql://sge:sge@postgres:5432/sge
+      - POSTGRES_USER=sge
+      - POSTGRES_PASSWORD=sge
+      - POSTGRES_DB=sge
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=postgres
+      - JWT_SECRET_KEY=isi_dengan_secret_key_bebas_kamu
+      - PYTHONPATH=/app
+    depends_on:
+      - postgres
+    networks:
+      sge-net:
+        ipv4_address: 172.21.0.3
+    restart: always
     ports:
-      - "8000:8000" # Pastikan kamu membuka port agar bisa akses dari browser
+      - "127.0.0.1:8001:8000"
+
+
+networks:
+  sge-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+volumes:
+  sge-pgdata:
+  caddy_data:
+  caddy_config:

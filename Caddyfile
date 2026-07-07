@@ -1,0 +1,17 @@
+sge.phsecretlabs.com {
+    # 1. API Handling: Reverse proxy ke FastAPI
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    # 2. Frontend & Static Assets
+    handle {
+        root * /srv/apps/sge/frontend
+        
+        # Urutan penting untuk SPA (Single Page Application)
+        try_files {path} {path}.html /pages/index.html
+        
+        file_server
+    }
+}

@@ -1,34 +1,54 @@
-import os
-from typing import Optional
-from pydantic_settings import BaseSettings, SettingsConfigDict
+services:
+  sge-db:
+    image: postgres:16
+    container_name: sge-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sge
+      POSTGRES_USER: sge
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - sge-db-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - sge-net
 
+  sge-backend:
+    build: ./backend
+    container_name: sge-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://sge:${DB_PASSWORD}@sge-db:5432/sge
+      POSTGRES_USER: sge
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: sge
+      POSTGRES_PORT: "5432"
+      POSTGRES_HOST: sge-db
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "120"
+    depends_on:
+      - sge-db
+    networks:
+      - sge-net
 
-class Settings(BaseSettings):
-    postgres_user: str
-    postgres_password: str
-    postgres_db: str
-    postgres_port: int
-    postgres_host: Optional[str] = None  # kalau diisi eksplisit (lewat env var), ini yang menang
-    jwt_secret_key: str
-    jwt_access_token_expire_minutes: int = 120
+  sge-frontend:
+    image: caddy:alpine
+    container_name: sge-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./frontend:/srv/frontend
+    depends_on:
+      - sge-backend
+    networks:
+      - sge-net
 
-    model_config = SettingsConfigDict(
-        env_file="../.env.local",
-        extra="ignore",
-    )
+networks:
+  sge-net:
+    driver: bridge
 
-    @property
-    def database_url(self) -> str:
-        if self.postgres_host:
-            # Production/server: host di-set eksplisit lewat env var
-            # (misal "sge-db" — nama service Postgres di docker-compose)
-            host = self.postgres_host
-        else:
-            # Fallback buat dev lokal Mac: di dalam Docker -> host.docker.internal
-            # (Postgres jalan native di Mac host), kalau bukan Docker -> localhost
-            is_docker = os.path.exists('/.dockerenv')
-            host = "host.docker.internal" if is_docker else "localhost"
-        return f"postgresql://{self.postgres_user}:{self.postgres_password}@{host}:{self.postgres_port}/{self.postgres_db}"
-
-
-settings = Settings()
+volumes:
+  sge-db-data:
