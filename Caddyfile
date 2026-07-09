@@ -1,4 +1,4 @@
-http://sge.phsecretlabs.com {
+:80 {
     reverse_proxy /api/* sge-backend:8001
     reverse_proxy /health sge-backend:8001
     
