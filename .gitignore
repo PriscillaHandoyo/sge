@@ -25,3 +25,7 @@ postgres-data/
 
 # Logs
 *.log
+
+caddy_data/
+caddy_config/
+__pycache__/
