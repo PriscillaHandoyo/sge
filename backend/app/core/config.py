@@ -4,12 +4,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    postgres_user: str
-    postgres_password: str
-    postgres_db: str
-    postgres_port: int
+    postgres_user: str = "sge"
+    postgres_password: str = "sge"
+    postgres_db: str = "sge"
+    postgres_port: str = "5432"
     postgres_host: Optional[str] = None  # kalau diisi eksplisit (lewat env var), ini yang menang
-    jwt_secret_key: str
+    jwt_secret_key: str = "sgesecretkey18"
     jwt_access_token_expire_minutes: int = 120
 
     model_config = SettingsConfigDict(

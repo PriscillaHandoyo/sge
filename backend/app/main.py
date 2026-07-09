@@ -7,6 +7,10 @@ from app.db.session import get_db
 
 app = FastAPI(title="SGE API")
 
+@app.get("/")
+def read_root():
+    return {"message": "SGE API is running. Go to /docs for documentation."}
+
 from app.routers import user, auth, customer, supplier, jasa, material, kode_barang_customer, bom, barang_jasa, kategori, satuan 
 
 app.add_middleware(
@@ -29,7 +33,11 @@ app.include_router(barang_jasa.router)
 app.include_router(kategori.router)
 app.include_router(satuan.router)
 
+#@app.get("/health")
+#def health(db: Session = Depends(get_db)):
+#    db.execute(text("SELECT 1"))
+#    return {"status": "ok", "db": "connected"}
+
 @app.get("/health")
-def health(db: Session = Depends(get_db)):
-    db.execute(text("SELECT 1"))
-    return {"status": "ok", "db": "connected"}
+def health():
+    return {"status": "ok"}

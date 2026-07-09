@@ -3,9 +3,38 @@
    Semua komunikasi ke backend FastAPI + handling JWT lewat sini.
    ==================================================================== */
 
-const API_BASE = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+/*const API_BASE = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
   ? "http://localhost:8000"
-  : "/api";
+  : "/api"; */
+
+const API_BASE = "/api"; 
+
+/* ---------------- Fetch wrapper ---------------- */
+
+async function apiFetch(path, options = {}) {
+  // Tambahkan log untuk debug di console browser (F12)
+  console.log("Requesting:", API_BASE + path);
+  
+  const token = getToken();
+  const isFormData = options.body instanceof FormData;
+
+  const response = await fetch(API_BASE + path, {
+    ...options,
+    headers: {
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+
+  if (response.status === 401) {
+    clearToken();
+    window.location.href = getPagesRootPrefix() + "login.html";
+    return null;
+  }
+
+  return response;
+}
 
 /* ---------------- Token & JWT helpers ---------------- */
 
