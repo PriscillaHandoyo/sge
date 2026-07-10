@@ -13,7 +13,9 @@ services:
   backend:
     build: ./backend
     container_name: sge-backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8001
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --proxy-headers
+    ports:
+      - "8001:8001"
     environment:
       - .env
     depends_on:
@@ -28,9 +30,10 @@ services:
     restart: always
     ports:
       - "3003:80"
-      - "3004:443"
+      #- "3004:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./frontend:/srv/apps/sge/frontend
     networks:
       - sge-net
 

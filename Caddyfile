@@ -1,8 +1,9 @@
 :80 {
+    # Lempar ke backend
     reverse_proxy /api/* sge-backend:8001
-    reverse_proxy /health sge-backend:8001
     
-    root * /srv/frontend
+    # Layani frontend
+    root * /srv/apps/sge/frontend
     file_server
     try_files {path} /pages/login.html
 }
