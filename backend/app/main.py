@@ -21,17 +21,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(user.router, prefix="/api/user")
-app.include_router(auth.router, prefix="/api/auth")
-app.include_router(customer.router, prefix="/api/customer")
-app.include_router(supplier.router, prefix="/api/supplier")
-app.include_router(jasa.router, prefix="/api/jasa")
-app.include_router(material.router, prefix="/api/material")
-app.include_router(kode_barang_customer.router, prefix="/api/kode_barang_customer")
-app.include_router(bom.router, prefix="/api/bom")
-app.include_router(barang_jasa.router, prefix="/api/barang_jasa")
-app.include_router(kategori.router, prefix="/api/kategori")
-app.include_router(satuan.router, prefix="/api/satuan")
+app.include_router(user.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
+app.include_router(customer.router, prefix="/api")
+app.include_router(supplier.router, prefix="/api")
+app.include_router(jasa.router, prefix="/api")
+app.include_router(material.router, prefix="/api")
+app.include_router(kode_barang_customer.router, prefix="/api")
+app.include_router(bom.router, prefix="/api")
+app.include_router(barang_jasa.router, prefix="/api")
+app.include_router(kategori.router, prefix="/api")
+app.include_router(satuan.router, prefix="/api")
 
 #@app.get("/health")
 #def health(db: Session = Depends(get_db)):
