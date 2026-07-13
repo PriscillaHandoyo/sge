@@ -147,7 +147,7 @@
     ];
 
     async function init() {
-      const response = await apiFetch("/suppliers/");
+      const response = await apiFetch("/supplier/");
       if (!response) return;
       allSuppliers = await response.json();
 
@@ -259,7 +259,7 @@
 
       const isEdit = editingId !== null;
       const response = await apiFetch(
-        isEdit ? `/suppliers/${editingId}` : "/suppliers/",
+        isEdit ? `/supplier/${editingId}` : "/supplier/",
         { method: isEdit ? "PUT" : "POST", body: JSON.stringify(payload) }
       );
       if (!response) return;
@@ -278,7 +278,7 @@
       const supplier = allSuppliers.find(s => s.id === id);
       if (!confirmDelete("supplier", supplier.nama_sup)) return;
 
-      const response = await apiFetch(`/suppliers/${id}`, { method: "DELETE" });
+      const response = await apiFetch(`/supplier/${id}`, { method: "DELETE" });
       if (!response) return;
       if (!response.ok) { alert("Gagal menghapus data"); return; }
       init();

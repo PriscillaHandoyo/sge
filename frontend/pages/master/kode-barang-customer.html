@@ -72,7 +72,7 @@
     async function init() {
       const [itemRes, customerRes] = await Promise.all([
         apiFetch("/kode-barang-customer/"),
-        apiFetch("/customers/"),
+        apiFetch("/customer/"),
       ]);
       if (!itemRes || !customerRes) return;
 

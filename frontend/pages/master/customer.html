@@ -127,7 +127,7 @@
     ];
 
     async function init() {
-      const response = await apiFetch("/customers/");
+      const response = await apiFetch("/customer/");
       if (!response) return;
       allCustomers = await response.json();
 
@@ -233,7 +233,7 @@
 
       const isEdit = editingId !== null;
       const response = await apiFetch(
-        isEdit ? `/customers/${editingId}` : "/customers/",
+        isEdit ? `/customer/${editingId}` : "/customer/",
         {
           method: isEdit ? "PUT" : "POST",
           body: JSON.stringify(payload),
@@ -257,7 +257,7 @@
       const customer = allCustomers.find(c => c.id === id);
       if (!confirmDelete("customer", customer.nama_cust)) return;
 
-      const response = await apiFetch(`/customers/${id}`, { method: "DELETE" });
+      const response = await apiFetch(`/customer/${id}`, { method: "DELETE" });
       if (!response) return;
 
       if (!response.ok) {

@@ -92,7 +92,7 @@
     async function init() {
       const [materialRes, supplierRes, kategoriRes, satuanRes] = await Promise.all([
         apiFetch("/materials/"),
-        apiFetch("/suppliers/"),
+        apiFetch("/supplier/"),
         apiFetch("/kategori/"),
         apiFetch("/satuan/"),
       ]);

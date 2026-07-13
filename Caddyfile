@@ -5,10 +5,16 @@
 
     handle {
         root * /srv
-        # Tambahkan baris ini:
+        
+        # 1. Jika user akses /dashboard.html, paksa buka file di /pages/dashboard.html
         rewrite /dashboard.html /pages/dashboard.html
         
+        # 2. Jika user akses /login.html, paksa buka file di /pages/login.html
+        rewrite /login.html /pages/login.html
+        
+        # 3. Urutan pencarian file
         try_files {path} {path}.html /pages{path} /pages{path}.html /pages/login.html
+        
         file_server
     }
 }
