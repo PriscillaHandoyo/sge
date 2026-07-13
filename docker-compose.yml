@@ -6,37 +6,50 @@ services:
       POSTGRES_USER: sge
       POSTGRES_PASSWORD: sge
       POSTGRES_DB: sge
+    volumes:
+      - sge-pgdata:/var/lib/postgresql/data
     networks:
-      - sge-net
+      sge-net:
+        ipv4_address: 172.21.0.2
     restart: always
 
   backend:
     build: ./backend
     container_name: sge-backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --proxy-headers
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001
+    # Tetap gunakan port 8001 untuk membedakan dengan espe
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
     environment:
-      - .env
+      - DATABASE_URL=postgresql://sge:sge@172.21.0.2:5432/sge
     depends_on:
       - postgres
+    volumes:
+      - ./backend:/app
     networks:
-      - sge-net
+      sge-net:
+        ipv4_address: 172.21.0.3
     restart: always
 
   caddy:
-    image: caddy:latest
+    image: caddy:alpine
     container_name: sge-caddy
-    restart: always
     ports:
-      - "3003:80"
-      #- "3004:443"
+      - "3003:3003"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - ./frontend:/srv/apps/sge/frontend
+      - ./frontend:/srv:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
     networks:
-      - sge-net
+      sge-net:
+        ipv4_address: 172.21.0.4
+    restart: always
 
 networks:
   sge-net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+volumes:
+  sge-pgdata:

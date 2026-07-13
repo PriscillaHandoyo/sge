@@ -1,9 +1,13 @@
-:80 {
-    # Lempar ke backend
-    reverse_proxy /api/* sge-backend:8001
-    
-    # Layani frontend
-    root * /srv/apps/sge/frontend
-    file_server
-    try_files {path} /pages/login.html
+:3003 {
+    # 1. Semua request yang diawali /api/ akan dilempar ke backend
+    handle /api/* {
+        reverse_proxy sge-backend:8001
+    }
+
+    # 2. Sisanya (frontend)
+    handle {
+        root * /srv
+        try_files {path} {path}.html /pages/login.html
+        file_server
+    }
 }
