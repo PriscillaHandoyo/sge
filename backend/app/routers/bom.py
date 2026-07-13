@@ -9,7 +9,7 @@ from app.models.material import Material
 from app.schemas.bom import BomCreate, BomUpdate, BomOut
 from app.services.excel_import import parse_bom_excel
 
-router = APIRouter(prefix="/bom", tags=["BOM"])
+router = APIRouter(tags=["BOM"])
 
 
 @router.post("/import/preview")

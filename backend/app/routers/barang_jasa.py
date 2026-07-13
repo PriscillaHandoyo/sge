@@ -7,7 +7,7 @@ from app.models.kode_barang_customer import KodeBarangCustomer
 from app.models.jasa import Jasa
 from app.schemas.barang_jasa import BarangJasaCreate, BarangJasaUpdate, BarangJasaOut
 
-router = APIRouter(prefix="/barang-jasa", tags=["Barang Jasa"])
+router = APIRouter(tags=["Barang Jasa"])
 
 
 @router.get("/", response_model=list[BarangJasaOut])

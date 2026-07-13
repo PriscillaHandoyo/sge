@@ -7,7 +7,7 @@ from app.models.supplier import Supplier
 from app.schemas.supplier import SupplierCreate, SupplierUpdate, SupplierOut
 from app.services.excel_import import parse_supplier_excel
 
-router = APIRouter(prefix="/suppliers", tags=["Supplier"])
+router = APIRouter(tags=["Supplier"])
 
 
 @router.post("/import/preview")

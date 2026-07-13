@@ -9,7 +9,7 @@ from app.models.satuan import Satuan
 from app.schemas.material import MaterialCreate, MaterialUpdate, MaterialOut
 from app.services.excel_import import parse_material_excel
 
-router = APIRouter(prefix="/materials", tags=["Material"])
+router = APIRouter(tags=["Material"])
 
 
 @router.post("/import/preview")

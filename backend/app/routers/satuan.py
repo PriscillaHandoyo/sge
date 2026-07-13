@@ -6,7 +6,7 @@ from app.db.session import get_db
 from app.models.satuan import Satuan
 from app.schemas.satuan import SatuanCreate, SatuanUpdate, SatuanOut
 
-router = APIRouter(prefix="/satuan", tags=["Satuan"])
+router = APIRouter(tags=["Satuan"])
 
 
 @router.get("/", response_model=list[SatuanOut])

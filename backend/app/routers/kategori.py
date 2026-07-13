@@ -6,7 +6,7 @@ from app.db.session import get_db
 from app.models.kategori import Kategori
 from app.schemas.kategori import KategoriCreate, KategoriUpdate, KategoriOut
 
-router = APIRouter(prefix="/kategori", tags=["Kategori"])
+router = APIRouter(tags=["Kategori"])
 
 
 @router.get("/", response_model=list[KategoriOut])

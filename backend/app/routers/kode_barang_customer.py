@@ -14,7 +14,7 @@ from app.schemas.kode_barang_customer import (
 )
 from app.services.excel_import import parse_pekerjaan_excel
 
-router = APIRouter(prefix="/kode-barang-customer", tags=["Kode Barang Customer"])
+router = APIRouter(tags=["Kode Barang Customer"])
 
 
 @router.post("/import/preview")

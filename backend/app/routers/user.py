@@ -8,7 +8,7 @@ from app.schemas.user import UserCreate, UserOut, RoleEnum
 from app.core.security import hash_password
 from app.dependencies import require_role
 
-router = APIRouter(prefix="/users", tags=["User"], dependencies=[Depends(require_role("admin"))])
+router = APIRouter(tags=["User"], dependencies=[Depends(require_role("admin"))])
 
 
 @router.get("/", response_model=list[UserOut])

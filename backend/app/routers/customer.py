@@ -7,7 +7,7 @@ from app.models.customer import Customer
 from app.schemas.customer import CustomerCreate, CustomerUpdate, CustomerOut
 from app.services.excel_import import parse_customer_excel
 
-router = APIRouter(prefix="/customers", tags=["Customer"])
+router = APIRouter(tags=["Customer"])
 
 
 @router.post("/import/preview")

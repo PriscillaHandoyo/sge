@@ -6,7 +6,7 @@ from app.db.session import get_db
 from app.models.jasa import Jasa
 from app.schemas.jasa import JasaCreate, JasaUpdate, JasaOut
 
-router = APIRouter(prefix="/jasa", tags=["Jasa"])
+router = APIRouter(tags=["Jasa"])
 
 
 @router.get("/", response_model=list[JasaOut])
